@@ -1,7 +1,7 @@
 'use client'
-import Image from "next/image";
-import { useState, useEffect, useRef} from "react";
-import { Box,Stack, Button, Container, Grid, TextField, Typography } from "@mui/material";
+import { useState, useEffect, useRef } from "react";
+import { Box, Stack, Button, Container, Grid, TextField, Typography, AppBar, Toolbar, IconButton } from "@mui/material";
+import MenuIcon from '@mui/icons-material/Menu';
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -21,7 +21,22 @@ export default function Home() {
     }
   }, [messages]);
 
-  const sendMesasge = async () => {
+  const createIndexAndEmbeddings = async () => {
+    try {
+      const result = await fetch('/api/setup',{
+        method: 'POST'
+      })
+
+      console.log("result ", result)
+      // const data = await result.json()
+      // console.log("data ", data)
+    } catch (error) {
+      console.error("Error creating index and embeddings:", error)
+    }
+
+
+  }
+  const sendMessage = async () => {
     console.log("message ", message);
     setMessage('');
     setMessages((messages)=> [...messages, {role: "user", content: message},{role: "assistant", content: ""}]);
@@ -59,38 +74,94 @@ export default function Home() {
   }
 
   return (
-    <Box width="100vw" height="100vh" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
-      <Stack direction="column" width="600px" height="700px" border="1px solid black" p={2} spacing={3}>
-        <Stack direction="column" spacing={2} flexGrow={1} overflow="auto" maxHeight="100%" ref={chatContainerRef}>
-          {messages.map((message,index) => (
-            <Box key={index} display="flex" justifyContent={message.role==="assistant"? 'flex-start': 'flex-end'}>
-              <Box bgcolor={message.role==="assistant"? 'primary.main':'secondary.main'}  color="white" borderRadius={16} p={3}>
-                {message.content}
-              </Box>
+    <Box sx={{ width: '100vw', height: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
+      <AppBar position="static" sx={{ bgcolor: 'background.paper' }}>
+        <Toolbar sx={{bgcolor:'black'}}>
+          <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }}>
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Rag Chat
+          </Typography>
+          <Button color="inherit">Login</Button>
+        </Toolbar>
+      </AppBar>
+      
+      <Container maxWidth="lg" sx={{ mt: 8 }}>
+        <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+          <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 4 }}>
+            Empowering Conversations with AI
+          </Typography>
+          <Typography variant="h6" sx={{ mb: 8 }}>
+            Your personalized AI-powered support agent, here to assist you.
+          </Typography>
+          {/* <Button variant="contained" color="primary" size="large" sx={{ px: 6, py: 2, mb: 8 }}>
+            Get Started
+          </Button> */}
+        </Box>
 
+        <Stack direction="column" spacing={2} sx={{ maxHeight: '60vh', overflow: 'auto', mb: 8 }} ref={chatContainerRef}>
+          {messages.map((message, index) => (
+            <Box key={index} display="flex" justifyContent={message.role === "assistant" ? 'flex-start' : 'flex-end'}>
+              {message.role === "user" ? (
+                <Box sx={{
+                  bgcolor: '#F1F4F7',
+                  color: 'text.primary',
+                  borderRadius: 16,
+                  p: 2,
+                  maxWidth: '75%',
+                }}>
+                  {message.content}
+                </Box>
+              ) : (
+                <Box sx={{
+                  color: 'text.primary',
+                  borderRadius: 16,
+                  p: 2,
+                  width: '100%',
+                }}>
+                <Typography variant="body1" sx={{ width: '100%', p: 2 }}>
+                  {message.content}
+                </Typography>
+                </Box>
+              )}
             </Box>
           ))}
-
         </Stack>
-        <Stack direction="row" spacing={2}>
+
+        <Stack direction="row" spacing={2} sx={{ mt: 4 }}>
           <TextField
-          label="Message"
+            label="Type your message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             variant="outlined"
             fullWidth
+            sx={{ bgcolor: 'background.paper', borderRadius: 2 }}
           />
           <Button
             variant="contained"
             color="primary"
-            onClick= {sendMesasge}
+            onClick={sendMessage}
+            sx={{ bgcolor: 'primary.dark' }}
           >
             Send
           </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={createIndexAndEmbeddings}
+            sx={{ bgcolor: 'primary.dark' }}
+          >
+            Create Index and Embeddings
+          </Button>
         </Stack>
+      </Container>
 
-      </Stack>
-
+      <Box component="footer" sx={{ py: 4, mt: 'auto', bgcolor: 'background.paper', textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          ©2024 Rag Chat. All rights reserved.
+        </Typography>
+      </Box>
     </Box>
   )
 }
