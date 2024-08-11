@@ -1,28 +1,74 @@
 'use client'
 import { useState, useEffect, useRef } from "react";
-import { Box, Stack, Button, Container, Grid, TextField, Typography, AppBar, Toolbar, IconButton } from "@mui/material";
-import MenuIcon from '@mui/icons-material/Menu';
+import { Box, Stack, Button, Container, TextField, Typography, AppBar, Toolbar, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText, Paper, Avatar, Menu, MenuItem } from "@mui/material";
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import SearchIcon from '@mui/icons-material/Search';
+import StorageIcon from '@mui/icons-material/Storage';
 import { useSession, signIn, signOut } from "next-auth/react";
-
+import FileUpload from './components/FileUpload';
+import FileList from './components/FileList';
+import Image from 'next/image';
 
 export default function Home() {
   const [messages, setMessages] = useState([
-  {  
-    role: "assistant",
-    content: "Hi, I'm the Headstarter support agent, how can i help you today?",
-  }
+    { role: "assistant", content: "Hi, how can I help you today?" }
   ]);
-
   const [message, setMessage] = useState('');
-  const chatContainerRef = useRef(null);
+  const [files, setFiles] = useState([]);
+  const [menuPosition, setMenuPosition] = useState(null);
+    const chatContainerRef = useRef(null);
   const { data: session } = useSession();
 
+
+  const handleProfileClick = (event) => {
+    setMenuPosition({
+      top: event.clientY,
+      left: event.clientX,
+    });
+  };
+  
+  const handleClose = () => {
+    setMenuPosition(null);
+  };
+
   useEffect(() => {
-    console.log("messages ", messages);
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (session?.user?.email) {
+      const storedFiles = sessionStorage.getItem(`uploadedFiles_${session.user.email}`);
+      if (storedFiles) {
+        setFiles(JSON.parse(storedFiles));
+      }
+    }
+  }, [session]);
+
+  const handleFileUpload = (newFiles) => {
+    const fileInfo = newFiles.map(file => ({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified
+    }));
+    
+    const updatedFiles = [...files, ...fileInfo];
+    setFiles(updatedFiles);
+    if (session?.user?.email) {
+      sessionStorage.setItem(`uploadedFiles_${session.user.email}`, JSON.stringify(updatedFiles));
+    }
+  };
+
+  const handleRemoveFile = (index) => {
+    const updatedFiles = files.filter((_, i) => i !== index);
+    setFiles(updatedFiles);
+    if (session?.user?.email) {
+      sessionStorage.setItem(`uploadedFiles_${session.user.email}`, JSON.stringify(updatedFiles));
+    }
+  };
 
   const createIndexAndEmbeddings = async () => {
     try {
@@ -76,99 +122,163 @@ export default function Home() {
 
   }
 
-  return (
-    <Box sx={{ width: '100vw', height: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
-      <AppBar position="static" sx={{ bgcolor: 'background.paper' }}>
-        <Toolbar sx={{bgcolor:'black'}}>
-          <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }}>
-            <MenuIcon />
-          </IconButton>
+  const WelcomePage = () => (
+    <>
+      <AppBar position="fixed" sx={{ bgcolor: 'black' }}>
+        <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Rag Chat
           </Typography>
-          {session ? (
-            <Button color="inherit" onClick={() => signOut()}>Logout</Button>
-          ) : (
-            <Button color="inherit" onClick={() => signIn('google')}>Login with Google</Button>
-          )}
+          <Button color="inherit" onClick={() => signIn('google')}>Login</Button>
         </Toolbar>
       </AppBar>
-      
-      <Container maxWidth="lg" sx={{ mt: 8 }}>
-        <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
-          <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 4 }}>
-            Empowering Conversations with AI
+      <Container maxWidth="md" sx={{ mt: 8, mb: 4 }}>
+        <Paper elevation={3} sx={{ p: 4, backgroundColor: '#f8f9fa' }}>
+          <Typography variant="h2" gutterBottom align="center" sx={{ fontWeight: 'bold', color: '#1a237e' }}>
+            Welcome to Rag Chat
           </Typography>
-          <Typography variant="h6" sx={{ mb: 8 }}>
-            Your personalized AI-powered support agent, here to assist you.
+          <Typography variant="h5" gutterBottom align="center" sx={{ mb: 4, color: '#3f51b5' }}>
+            Your AI-powered support assistant
           </Typography>
-          {/* <Button variant="contained" color="primary" size="large" sx={{ px: 6, py: 2, mb: 8 }}>
-            Get Started
-          </Button> */}
+          <Typography variant="body1" paragraph>
+            Rag Chat uses advanced AI to provide instant, accurate responses to your queries. 
+            Experience the power of AI-driven support with these features:
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 4 }}>
+            <Paper elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+              <CloudUploadIcon sx={{ mr: 2, color: '#4caf50' }} />
+              <Typography variant="body1">Upload your own knowledge base for personalized assistance</Typography>
+            </Paper>
+            <Paper elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+              <SearchIcon sx={{ mr: 2, color: '#2196f3' }} />
+              <Typography variant="body1">Query your knowledge base with natural language</Typography>
+            </Paper>
+            <Paper elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+              <StorageIcon sx={{ mr: 2, color: '#ff9800' }} />
+              <Typography variant="body1">Coming soon: Access multiple knowledge bases and enhanced context understanding</Typography>
+            </Paper>
+          </Stack>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <Button 
+              variant="contained" 
+              size="large" 
+              onClick={() => signIn('google')}
+              sx={{ 
+                mt: 4, 
+                backgroundColor: '#4caf50', 
+                '&:hover': { backgroundColor: '#45a049' } 
+              }}
+            >
+              Sign in with Google to Get Started
+            </Button>
+          </Box>
+        </Paper>
+      </Container>
+    </>
+  );
+
+  const ChatInterface = () => (
+    <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: 240,
+          flexShrink: 0,
+          [`& .MuiDrawer-paper`]: { width: 240, boxSizing: 'border-box' },
+        }}
+      >
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+          <Image src="/logo.jpg" alt="Rag Chat Logo" width={40} height={40} />
+          <Typography variant="h6" sx={{ ml: 2 }}>Rag Chat</Typography>
         </Box>
-
-        <Stack direction="column" spacing={2} sx={{ maxHeight: '60vh', overflow: 'auto', mb: 8 }} ref={chatContainerRef}>
-          {messages.map((message, index) => (
-            <Box key={index} display="flex" justifyContent={message.role === "assistant" ? 'flex-start' : 'flex-end'}>
-              {message.role === "user" ? (
-                <Box sx={{
-                  bgcolor: '#F1F4F7',
-                  color: 'text.primary',
-                  borderRadius: 16,
-                  p: 2,
-                  maxWidth: '75%',
-                }}>
-                  {message.content}
-                </Box>
-              ) : (
-                <Box sx={{
-                  color: 'text.primary',
-                  borderRadius: 16,
-                  p: 2,
-                  width: '100%',
-                }}>
-                <Typography variant="body1" sx={{ width: '100%', p: 2 }}>
-                  {message.content}
-                </Typography>
-                </Box>
-              )}
-            </Box>
-          ))}
-        </Stack>
-
-        <Stack direction="row" spacing={2} sx={{ mt: 4 }}>
-          <TextField
-            label="Type your message..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+        <Box sx={{ overflow: 'auto' }}>
+          <List>
+            <ListItem button onClick={() => document.getElementById('fileInput').click()}>
+              <ListItemIcon>
+                <UploadFileIcon />
+              </ListItemIcon>
+              <ListItemText primary="Upload File" />
+            </ListItem>
+          </List>
+          <FileUpload onFileUpload={handleFileUpload} />
+          <FileList files={files} onRemoveFile={handleRemoveFile} />
+        </Box>
+      </Drawer>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, position: 'relative' }}>
+        <IconButton onClick={handleProfileClick}>
+          <Avatar src={session?.user?.image} alt={session?.user?.name} />
+        </IconButton>
+        <Menu
+          anchorReference="anchorPosition"
+          anchorPosition={menuPosition}
+          open={Boolean(menuPosition)}
+          onClose={handleClose}
+        >
+          <MenuItem onClick={() => { signOut(); handleClose(); }}>Logout</MenuItem>
+        </Menu>
+      </Box>
+      <Stack direction="column" spacing={2} sx={{ flexGrow: 1, overflow: 'auto' }} ref={chatContainerRef}>
+        {messages.map((message, index) => (
+          <Box key={index} display="flex" justifyContent={message.role === "assistant" ? 'flex-start' : 'flex-end'}>
+            <Paper elevation={1} sx={{
+              p: 2,
+              maxWidth: '75%',
+              backgroundColor: message.role === "user" ? '#e3f2fd' : '#f1f8e9',
+            }}>
+              <Typography>{message.content}</Typography>
+            </Paper>
+          </Box>
+        ))}
+      </Stack>
+      <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+        <TextField
+          label="Type your message..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          variant="outlined"
+          fullWidth
+        />
+        <Button
+          variant="contained"
+          onClick={sendMessage}
+          sx={{ bgcolor: 'black', '&:hover': { bgcolor: '#333' } }}
+        >
+          Send
+        </Button>
+        <Button
             variant="outlined"
-            fullWidth
-            sx={{ bgcolor: 'background.paper', borderRadius: 2 }}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={sendMessage}
-            sx={{ bgcolor: 'primary.dark' }}
-          >
-            Send
-          </Button>
-          <Button
-            variant="contained"
             color="primary"
             onClick={createIndexAndEmbeddings}
-            sx={{ bgcolor: 'primary.dark' }}
           >
             Create Index and Embeddings
-          </Button>
-        </Stack>
-      </Container>
-
-      <Box component="footer" sx={{ py: 4, mt: 'auto', bgcolor: 'background.paper', textAlign: 'center' }}>
-        <Typography variant="body2" color="text.secondary">
-          ©2024 Rag Chat. All rights reserved.
-        </Typography>
+        </Button>
+      </Stack>
       </Box>
     </Box>
-  )
+  );
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    {!session ? <WelcomePage /> : <ChatInterface />}
+      <Box 
+        component="footer" 
+        sx={{ 
+          py: 3, 
+          px: 2, 
+          mt: 'auto', 
+          backgroundColor: (theme) =>
+            theme.palette.mode === 'light'
+              ? theme.palette.grey[200]
+              : theme.palette.grey[800],
+        }}
+      >
+        <Container maxWidth="sm">
+          <Typography variant="body2" color="text.secondary" align="center">
+            © 2024 Rag Chat. All rights reserved.
+          </Typography>
+        </Container>
+      </Box>
+    </Box>
+  );
 }
