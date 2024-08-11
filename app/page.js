@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Box, Stack, Button, Container, Grid, TextField, Typography, AppBar, Toolbar, IconButton } from "@mui/material";
 import MenuIcon from '@mui/icons-material/Menu';
+import { useSession, signIn, signOut } from "next-auth/react";
+
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -13,6 +15,7 @@ export default function Home() {
 
   const [message, setMessage] = useState('');
   const chatContainerRef = useRef(null);
+  const { data: session } = useSession();
 
   useEffect(() => {
     console.log("messages ", messages);
@@ -83,7 +86,11 @@ export default function Home() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Rag Chat
           </Typography>
-          <Button color="inherit">Login</Button>
+          {session ? (
+            <Button color="inherit" onClick={() => signOut()}>Logout</Button>
+          ) : (
+            <Button color="inherit" onClick={() => signIn('google')}>Login with Google</Button>
+          )}
         </Toolbar>
       </AppBar>
       
