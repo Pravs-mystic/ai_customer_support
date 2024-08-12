@@ -1,4 +1,14 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Rag Chat
+Rag Chat uses Generative AI to provide instant, accurate responses to your queries for any documents you upload. Experience the power of AI-driven support with these features:
+1. Upload your own knowledge base for personalized assistance
+2. Query your knowledge base with natural language
+3. Coming soon: Access multiple knowledge bases and enhanced context understanding
+
+## How to run
+1. npm install
+2. setup keys and env variables
+3. run `npm run dev`
+
 
 ## Getting Started
 
