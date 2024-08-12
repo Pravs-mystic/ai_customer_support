@@ -1,25 +1,28 @@
 'use client'
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Box, Stack, Button, Container, TextField, Typography, AppBar, Toolbar, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText, Paper, Avatar, Menu, MenuItem } from "@mui/material";
+import MenuIcon from '@mui/icons-material/Menu';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import StorageIcon from '@mui/icons-material/Storage';
-import { useSession, signIn, signOut } from "next-auth/react";
 import FileUpload from './components/FileUpload';
 import FileList from './components/FileList';
 import Image from 'next/image';
+import { signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
+import { ref, uploadBytes, listAll, getDownloadURL, deleteObject } from "firebase/storage";
+import { auth, storage, googleProvider } from './firebase';
+import Chatinterface from "./components/chatinterface";
 
 export default function Home() {
+  console.log('Home component rendering');
   const [messages, setMessages] = useState([
     { role: "assistant", content: "Hi, how can I help you today?" }
   ]);
-  const [message, setMessage] = useState('');
   const [files, setFiles] = useState([]);
   const [menuPosition, setMenuPosition] = useState(null);
-    const chatContainerRef = useRef(null);
-  const { data: session } = useSession();
-
+  const [user, setUser] = useState(null);
+  const chatContainerRef = useRef(null);
 
   const handleProfileClick = (event) => {
     setMenuPosition({
@@ -33,73 +36,141 @@ export default function Home() {
   };
 
   useEffect(() => {
+    console.log("use effect messages ", messages)
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
   useEffect(() => {
-    if (session?.user?.email) {
-      const storedFiles = sessionStorage.getItem(`uploadedFiles_${session.user.email}`);
-      if (storedFiles) {
-        setFiles(JSON.parse(storedFiles));
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+      if (user) {
+        console.log("User is authenticated:", user.uid);
+        loadUserFiles(user.uid);
+      } else {
+        console.log("User is not authenticated");
+        setFiles([]);
       }
-    }
-  }, [session]);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const handleFileUpload = (newFiles) => {
-    const fileInfo = newFiles.map(file => ({
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      lastModified: file.lastModified
-    }));
-    
-    const updatedFiles = [...files, ...fileInfo];
-    setFiles(updatedFiles);
-    if (session?.user?.email) {
-      sessionStorage.setItem(`uploadedFiles_${session.user.email}`, JSON.stringify(updatedFiles));
-    }
-  };
 
-  const handleRemoveFile = (index) => {
-    const updatedFiles = files.filter((_, i) => i !== index);
-    setFiles(updatedFiles);
-    if (session?.user?.email) {
-      sessionStorage.setItem(`uploadedFiles_${session.user.email}`, JSON.stringify(updatedFiles));
-    }
-  };
-
-  const createIndexAndEmbeddings = async () => {
+  const handleSignIn = async () => {
     try {
-      const result = await fetch('/api/setup',{
-        method: 'POST'
-      })
-
-      console.log("result ", result)
-      // const data = await result.json()
-      // console.log("data ", data)
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error("Error creating index and embeddings:", error)
+      console.error("Error signing in with Google", error);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await firebaseSignOut(auth);
+      setUser(null);
+      setMenuPosition(null); // Close the menu
+    } catch (error) {
+      console.error("Error signing out", error);
+    }
+  };
+
+  const loadUserFiles = async (userId) => {
+    const filesRef = ref(storage, `files/${userId}`);
+    const fileList = await listAll(filesRef);
+    const filesData = await Promise.all(
+      fileList.items.map(async (item) => {
+        const url = await getDownloadURL(item);
+        return { name: item.name, url };
+      })
+    );
+    setFiles(filesData);
+  };
+
+  const handleFileUpload = async (newFiles) => {
+    if (!user) return;
+  
+    const uploadPromises = newFiles.map(async (file) => {
+      const fileRef = ref(storage, `files/${user.uid}/${file.name}`);
+      try {
+        const snapshot = await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(snapshot.ref);
+        console.log('File uploaded successfully');
+        return { name: file.name, url };
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        throw error;
+      }
+    });
+  
+    try {
+      const uploadedFiles = await Promise.all(uploadPromises);
+      setFiles((prevFiles) => [...prevFiles, ...uploadedFiles]);
+      await createIndexAndEmbeddings(); // Automatically create index after upload
+    } catch (error) {
+      console.error("Error uploading files:", error);
+    }
+  };
+
+  const handleRemoveFile = async (index) => {
+    if (!user) return;
+
+    const fileToRemove = files[index];
+    const fileRef = ref(storage, `files/${user.uid}/${fileToRemove.name}`);
+
+    try {
+      await deleteObject(fileRef);
+      setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
+      await createIndexAndEmbeddings(); // Automatically create index after removal
+    } catch (error) {
+      console.error("Error removing file:", error);
+    }
+  };
+
+  const createIndexAndEmbeddings = useCallback(async () => {
+    if (!user) {
+      console.error("No user logged in");
+      return;
     }
 
+    try {
+      const response = await fetch('/api/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId: user.uid })
+      });
 
-  }
-  const sendMessage = async () => {
+      if (!response.ok) {
+        throw new Error('Failed to create index and embeddings');
+      }
+
+      const result = await response.json();
+      console.log(result.data);
+
+    } catch (error) {
+      console.error("Error creating index and embeddings:", error);
+    }
+  }, [user]);
+
+  const sendMessage = async (message) => {
     console.log("message ", message);
-    setMessage('');
     setMessages((messages)=> [...messages, {role: "user", content: message},{role: "assistant", content: ""}]);
 
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {  'Content-Type': 'application/json' },
-      body: JSON.stringify([
+      body: JSON.stringify({
+      messages: [
         ...messages,
         {
           role: "user",
           content: message
         }
-      ])
+      ],
+      userId: user.uid // Add the user ID here
+    })
     }).then(async (res) => {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -129,7 +200,7 @@ export default function Home() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Rag Chat
           </Typography>
-          <Button color="inherit" onClick={() => signIn('google')}>Login</Button>
+          <Button color="inherit" onClick={handleSignIn}>Login</Button>
         </Toolbar>
       </AppBar>
       <Container maxWidth="md" sx={{ mt: 8, mb: 4 }}>
@@ -158,127 +229,66 @@ export default function Home() {
               <Typography variant="body1">Coming soon: Access multiple knowledge bases and enhanced context understanding</Typography>
             </Paper>
           </Stack>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <Button 
-              variant="contained" 
-              size="large" 
-              onClick={() => signIn('google')}
-              sx={{ 
-                mt: 4, 
-                backgroundColor: '#4caf50', 
-                '&:hover': { backgroundColor: '#45a049' } 
-              }}
-            >
-              Sign in with Google to Get Started
-            </Button>
-          </Box>
         </Paper>
       </Container>
     </>
   );
 
-  const ChatInterface = () => (
-    <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: 240,
-          flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: 240, boxSizing: 'border-box' },
-        }}
-      >
-        <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-          <Image src="/logo.jpg" alt="Rag Chat Logo" width={40} height={40} />
-          <Typography variant="h6" sx={{ ml: 2 }}>Rag Chat</Typography>
-        </Box>
-        <Box sx={{ overflow: 'auto' }}>
-          <List>
-            <ListItem button onClick={() => document.getElementById('fileInput').click()}>
-              <ListItemIcon>
-                <UploadFileIcon />
-              </ListItemIcon>
-              <ListItemText primary="Upload File" />
-            </ListItem>
-          </List>
-          <FileUpload onFileUpload={handleFileUpload} />
-          <FileList files={files} onRemoveFile={handleRemoveFile} />
-        </Box>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, position: 'relative' }}>
-        <IconButton onClick={handleProfileClick}>
-          <Avatar src={session?.user?.image} alt={session?.user?.name} />
-        </IconButton>
-        <Menu
-          anchorReference="anchorPosition"
-          anchorPosition={menuPosition}
-          open={Boolean(menuPosition)}
-          onClose={handleClose}
-        >
-          <MenuItem onClick={() => { signOut(); handleClose(); }}>Logout</MenuItem>
-        </Menu>
+  const ChatDrawer = () => (
+    <Drawer
+      variant="permanent"
+      sx={{
+        width: 240,
+        flexShrink: 0,
+        [`& .MuiDrawer-paper`]: { width: 240, boxSizing: 'border-box' },
+      }}
+    >
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+        <Image src="/logo.jpg" alt="Rag Chat Logo" width={40} height={40} />
+        <Typography variant="h6" sx={{ ml: 2 }}>Rag Chat</Typography>
       </Box>
-      <Stack direction="column" spacing={2} sx={{ flexGrow: 1, overflow: 'auto' }} ref={chatContainerRef}>
-        {messages.map((message, index) => (
-          <Box key={index} display="flex" justifyContent={message.role === "assistant" ? 'flex-start' : 'flex-end'}>
-            <Paper elevation={1} sx={{
-              p: 2,
-              maxWidth: '75%',
-              backgroundColor: message.role === "user" ? '#e3f2fd' : '#f1f8e9',
-            }}>
-              <Typography>{message.content}</Typography>
-            </Paper>
-          </Box>
-        ))}
-      </Stack>
-      <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-        <TextField
-          label="Type your message..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          variant="outlined"
-          fullWidth
-        />
-        <Button
-          variant="contained"
-          onClick={sendMessage}
-          sx={{ bgcolor: 'black', '&:hover': { bgcolor: '#333' } }}
-        >
-          Send
-        </Button>
-        <Button
-            variant="outlined"
-            color="primary"
-            onClick={createIndexAndEmbeddings}
-          >
-            Create Index and Embeddings
-        </Button>
-      </Stack>
+      <Box sx={{ overflow: 'auto' }}>
+        <List>
+          <ListItem button onClick={() => document.getElementById('fileInput').click()}>
+            <ListItemIcon>
+              <UploadFileIcon />
+            </ListItemIcon>
+            <ListItemText primary="Upload File" />
+          </ListItem>
+        </List>
+        <FileUpload onFileUpload={handleFileUpload} />
+        <FileList files={files} onRemoveFile={handleRemoveFile} />
       </Box>
-    </Box>
+    </Drawer>
   );
 
+ 
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-    {!session ? <WelcomePage /> : <ChatInterface />}
-      <Box 
-        component="footer" 
-        sx={{ 
-          py: 3, 
-          px: 2, 
-          mt: 'auto', 
-          backgroundColor: (theme) =>
-            theme.palette.mode === 'light'
-              ? theme.palette.grey[200]
-              : theme.palette.grey[800],
-        }}
-      >
-        <Container maxWidth="sm">
-          <Typography variant="body2" color="text.secondary" align="center">
-            © 2024 Rag Chat. All rights reserved.
-          </Typography>
-        </Container>
-      </Box>
+    <Box sx={{ display: 'flex', height: '100vh' }}>
+      {user ? (
+        <>
+          <ChatDrawer />
+          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2 }}>
+              <IconButton onClick={(e) => setMenuPosition({ top: e.clientY, left: e.clientX })}>
+                <Avatar src={user.photoURL} alt={user.displayName} />
+              </IconButton>
+              <Menu
+                anchorReference="anchorPosition"
+                anchorPosition={menuPosition}
+                open={Boolean(menuPosition)}
+                onClose={() => setMenuPosition(null)}
+              >
+                <MenuItem onClick={handleSignOut}>Logout</MenuItem>
+              </Menu>
+            </Box>
+            <Chatinterface messages={messages} sendMessage={sendMessage} />
+          </Box>
+        </>
+      ) : (
+        <WelcomePage />
+      )}
     </Box>
   );
 }

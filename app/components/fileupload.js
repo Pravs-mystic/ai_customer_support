@@ -4,7 +4,6 @@ import { Input } from '@mui/material';
 const FileUpload = ({ onFileUpload }) => {
   const handleFileChange = (event) => {
     const files = Array.from(event.target.files);
-    console.log('files-fileupload', files);
     onFileUpload(files);
   };
 

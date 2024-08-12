@@ -10,14 +10,15 @@ Your goal is to provide helpful and accurate responses to user inquiries based o
 
 export async function POST(req) {
     const openai = new openAI(process.env.OPENAI_API_KEY);
-    const data = await req.json();
-    console.log(`data: ${JSON.stringify(data)}`)
-    const query_submit = data[data.length - 1].content;
+    const body = await req.json();
+    const { messages, userId } = body;
+ 
+    const query_submit = messages[messages.length - 1].content;
     const pinecone = new Pinecone({
         apiKey: process.env.PINECONE_API_KEY || '',
     })
 
-    const text = await queryPineconeVectorStoreAndQueryLLM(pinecone, indexName, query_submit)
+    const text = await queryPineconeVectorStoreAndQueryLLM(pinecone, indexName, query_submit,userId)
   
     // const completion = await openai.chat.completions.create({
     //     messages: [

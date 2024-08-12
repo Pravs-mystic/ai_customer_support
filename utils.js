@@ -38,7 +38,7 @@ export const createPineconeIndex = async(
 }
 
 // TAKES IN DOCUMENTS, SPLITS THEM INTO CHUNKS, EMBEDS THEM, CREATES VECTOR OF EMBEDDINGS, AND UPLOADS TO PINECONE
-export const updatePinecone = async(client, indexName, docs)=>{
+export const updatePinecone = async(client, indexName, docs, userId) => {
     const index = client.Index(indexName)
     console.log(`retrieved index ${indexName}`)
 
@@ -48,7 +48,7 @@ export const updatePinecone = async(client, indexName, docs)=>{
         const text = doc.pageContent;
 
         const textSplitter = new RecursiveCharacterTextSplitter({
-            chunkSize: 1000,  // to be changed later
+            chunkSize: 1000,
             chunkOverlap: 100,
         })
         console.log(`Splitting text into chunks`)
@@ -63,30 +63,27 @@ export const updatePinecone = async(client, indexName, docs)=>{
  
         console.log(`Embedding chunks with length ${chunks.length}`)
 
-        // upload to pinecone
-        const batchSize = 100 //to be changed later
+        const batchSize = 100
         let batch = []
 
         for(let idx=0; idx< chunks.length;idx++){
             const chunk = chunks[idx];
             const vector = {
-                id: `${txtPath}_${idx}`,
+                id: `${userId}_${txtPath}_${idx}`,
                 values: embeddingsArrays[idx],
                 metadata:{
                     ...chunk.metadata,
                     loc: JSON.stringify(chunk.metadata.loc),
                     pageContent: chunk.pageContent,
                     txtPath: txtPath,
+                    userId: userId,  // Add user ID to metadata
                 }
-           
             }
             batch =[...batch, vector]
-            // console.log('batch', batch)
             if(batch.length === batchSize || idx === chunks.length - 1){
-await index.upsert(batch);
+                await index.upsert(batch);
                 batch = []
             }
-
         }
     }
 }
@@ -96,8 +93,9 @@ export const queryPineconeVectorStoreAndQueryLLM = async(
     client,
     indexName,
     query,
-)=>{
-    console.log(`Querying pinecone index ${indexName}`)
+    userId
+) => {
+    console.log(`Querying pinecone index ${indexName} for user ${userId}`)
     const index = client.Index(indexName)
     const queryEmbedding = await new OpenAIEmbeddings().embedQuery(query)
   
@@ -106,13 +104,14 @@ export const queryPineconeVectorStoreAndQueryLLM = async(
         topK: 5,
         includeValues: true,
         includeMetadata: true,
+        filter: { userId: userId }  // Filter results by user ID
     });
     console.log(`Retrieved ${queryResult.matches.length} matches`)
     console.log(`Asking question: ${query}`)
 
     if(queryResult.matches.length){
         const llm = new OpenAI({})
-        const chain = loadQAStuffChain(llm) //can change this chain to RefineDocumentsChain  for more documents
+        const chain = loadQAStuffChain(llm)
 
         const concatenatedPageContent = queryResult.matches.map((match)=>match.metadata.pageContent).join(" ")
 
@@ -125,8 +124,5 @@ export const queryPineconeVectorStoreAndQueryLLM = async(
     } else{
         console.log(`No matches found for query: ${query}`)
         return "No matches found"
-
     }
-
-
 }
