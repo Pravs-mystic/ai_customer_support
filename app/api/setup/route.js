@@ -52,7 +52,7 @@ export async function POST(req) {
         }
     
         console.log("docs loaded");
-        const vectorDimension = 1536;
+        const vectorDimension = 1024;
     
         const pinecone = new Pinecone({
           apiKey: process.env.PINECONE_API_KEY || '',

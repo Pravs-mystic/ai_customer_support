@@ -1,13 +1,12 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Box, Stack, Button, Container, TextField, Typography, AppBar, Toolbar, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText, Paper, Avatar, Menu, MenuItem } from "@mui/material";
-import MenuIcon from '@mui/icons-material/Menu';
+import { Box, Stack, Button, Container, Typography, AppBar, Toolbar, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText, Paper, Avatar, Menu, MenuItem } from "@mui/material";
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import StorageIcon from '@mui/icons-material/Storage';
-import FileUpload from './components/FileUpload';
-import FileList from './components/FileList';
+import FileUpload from './components/fileupload';
+import FileList from './components/filelist';
 import Image from 'next/image';
 import { signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
 import { ref, uploadBytes, listAll, getDownloadURL, deleteObject } from "firebase/storage";
@@ -24,16 +23,6 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const chatContainerRef = useRef(null);
 
-  const handleProfileClick = (event) => {
-    setMenuPosition({
-      top: event.clientY,
-      left: event.clientX,
-    });
-  };
-  
-  const handleClose = () => {
-    setMenuPosition(null);
-  };
 
   useEffect(() => {
     console.log("use effect messages ", messages)
@@ -121,7 +110,6 @@ export default function Home() {
     try {
       await deleteObject(fileRef);
       setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
-      await createIndexAndEmbeddings(); // Automatically create index after removal
     } catch (error) {
       console.error("Error removing file:", error);
     }

@@ -4,9 +4,6 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import {queryPineconeVectorStoreAndQueryLLM} from "../../../utils";
 import {indexName} from '../../../config'
 
-const systemPrompt = `
-Your goal is to provide helpful and accurate responses to user inquiries based on the data provided to you. If you cannot answer based on the data provided and if you do not know the answer, then respond to the user that you cannot answer based on the information provided.
-`;
 
 export async function POST(req) {
     const openai = new openAI(process.env.OPENAI_API_KEY);
