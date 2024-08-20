@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "init-db": "node initDb.js"
   },
   "dependencies": {
     "@emotion/react": "^11.13.0",
@@ -16,15 +17,20 @@
     "@mui/icons-material": "^5.16.7",
     "@mui/material": "^5.16.6",
     "@pinecone-database/pinecone": "^3.0.0",
+    "dotenv": "^16.4.5",
     "firebase": "^10.12.5",
     "firebase-admin": "^12.3.1",
+    "fs": "^0.0.1-security",
     "langchain": "^0.2.15",
     "next": "14.2.5",
     "next-auth": "^4.24.7",
     "openai": "^4.55.1",
     "pdf-parse": "^1.1.1",
+    "pg": "^8.12.0",
+    "pg-hstore": "^2.3.4",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "sequelize": "^6.37.3"
   },
   "devDependencies": {
     "eslint": "^8",

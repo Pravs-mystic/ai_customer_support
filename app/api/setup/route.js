@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { Document } from 'langchain/document';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
-import { createPineconeIndex, updatePinecone } from '../../../utils';
+import { createPineconeIndex, updatePinecone } from '../../../utils/pineconeUtils';
 import { indexName } from '../../../config';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
@@ -17,7 +17,7 @@ if (!getApps().length) {
     });
   }
   
-  const bucket = getStorage().bucket(NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+  const bucket = getStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
 
 // AUTOMATICALLY TAKES THE DOCS IN DOCUMENTS FOLDER AND UPLOADS TO PINECONE
 export async function POST(req) {

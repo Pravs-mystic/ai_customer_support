@@ -1,8 +1,10 @@
 # Rag Chat
-Rag Chat uses Generative AI to provide instant, accurate responses to your queries for any documents you upload. Experience the power of AI-driven support with these features:
-1. Upload your own knowledge base for personalized assistance
-2. Query your knowledge base with natural language
-3. Coming soon: Access multiple knowledge bases and enhanced context understanding
+Rag Chat uses Generative AI to provide instant, accurate responses to your queries from any uploaded documents. Experience the power of AI-driven support with these features:
+
+## Features:
+1. Login and Upload your documents (pdf, txt, md) and query the bot anything about those docs
+2. You can add multiple files and remove them anytime
+3. Coming soon: Multiple file formats, enhanced context, tools
 
 ## How to run
 1. npm install

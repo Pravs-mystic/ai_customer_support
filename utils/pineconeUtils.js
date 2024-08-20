@@ -2,7 +2,7 @@ import { OpenAIEmbeddings } from '@langchain/openai'
 import {RecursiveCharacterTextSplitter} from 'langchain/text_splitter'
 import {OpenAI} from '@langchain/openai'
 import {Document} from 'langchain/document'
-import {timeout} from './config'
+import {timeout} from '../config'
 import { PromptTemplate } from "@langchain/core/prompts";
 
 

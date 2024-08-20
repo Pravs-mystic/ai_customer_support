@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
-import openAI from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
-import {queryPineconeVectorStoreAndQueryLLM} from "../../../utils";
+import {queryPineconeVectorStoreAndQueryLLM} from "../../../utils/pineconeUtils";
 import {indexName} from '../../../config'
-
+import { saveMessage } from '../../../utils/dbOperations';
 
 export async function POST(req) {
-    const openai = new openAI(process.env.OPENAI_API_KEY);
     const body = await req.json();
-    const { messages, userId } = body;
+    const { messages, userId, conversationId } = body;
  
+    const lastMessage = messages[messages.length - 1];
+
+    if (lastMessage.role !== "user") {
+      return NextResponse.json({ error: "Last message must be from user" }, { status: 400 });
+    }
     const query_submit = messages[messages.length - 1].content;
     const pinecone = new Pinecone({
         apiKey: process.env.PINECONE_API_KEY || '',
