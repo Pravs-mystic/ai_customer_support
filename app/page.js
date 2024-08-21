@@ -5,13 +5,16 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import StorageIcon from '@mui/icons-material/Storage';
+import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import FileUpload from './components/fileupload';
 import FileList from './components/filelist';
 import Image from 'next/image';
-import { signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
 import { ref, uploadBytes, listAll, getDownloadURL, deleteObject } from "firebase/storage";
 import { auth, storage, googleProvider } from './firebase';
 import Chatinterface from "./components/chatinterface";
+import { createUser, getOrCreateConversation, saveMessage, getUserConversations, getConversationMessages } from '../utils/dbOperations';
+import SignInPage from './signin/page';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   console.log('Home component rendering');
@@ -21,8 +24,10 @@ export default function Home() {
   const [files, setFiles] = useState([]);
   const [menuPosition, setMenuPosition] = useState(null);
   const [user, setUser] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
   const chatContainerRef = useRef(null);
-
+  const router = useRouter();
 
   useEffect(() => {
     console.log("use effect messages ", messages)
@@ -31,22 +36,71 @@ export default function Home() {
     }
   }, [messages]);
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user);
-      if (user) {
-        console.log("User is authenticated:", user.uid);
-        loadUserFiles(user.uid);
+  const checkUserSession = async () => {
+    try {
+      const response = await fetch('/api/auth/session', {
+        method: 'GET',
+        credentials: 'include' // Important for including cookies in the request
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.isLoggedIn) {
+          setUser(data.user);
+          const userConversations = await getUserConversations(data.user.id);
+          setConversations(userConversations);
+          if (userConversations.length > 0) {
+            setCurrentConversationId(userConversations[0].id);
+            loadConversationMessages(userConversations[0].id);
+          }
+          loadUserFiles(data.user.id);
+        } else {
+          setUser(null);
+        }
       } else {
-        console.log("User is not authenticated");
-        setFiles([]);
+        setUser(null);
       }
-    });
-    return () => unsubscribe();
+    } catch (error) {
+      console.error("Error checking user session:", error);
+      setUser(null);
+    }
+  };
+
+  useEffect(() => {
+    // Check for user session on component mount
+    checkUserSession();
   }, []);
 
+  const handleSignOut = async () => {
+    try {
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+        credentials: 'include' // Important for including cookies in the request
+      });
+      if (response.ok) {
+        setUser(null);
+        setMenuPosition(null);
+        setFiles([]);
+        setConversations([]);
+        setCurrentConversationId(null);
+        setMessages([]);
+        router.push('/');
+      }
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
-  const handleSignIn = async () => {
+
+
+  const handleSignIn = async (email, password) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      console.error("Error signing in with email/password", error);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
@@ -54,14 +108,27 @@ export default function Home() {
     }
   };
 
-  const handleSignOut = async () => {
+  const handleCreateAccount = async (email, password, displayName) => {
     try {
-      await firebaseSignOut(auth);
-      setUser(null);
-      setMenuPosition(null); // Close the menu
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await userCredential.user.updateProfile({ displayName });
+      await createUser(userCredential.user.uid, email, displayName);
     } catch (error) {
-      console.error("Error signing out", error);
+      console.error("Error creating account", error);
     }
+  };
+
+
+  const loadConversationMessages = async (conversationId) => {
+    const messages = await getConversationMessages(conversationId);
+    setMessages(messages);
+  };
+
+  const createNewConversation = async () => {
+    const newConversation = await getOrCreateConversation(user.uid);
+    setConversations([newConversation, ...conversations]);
+    setCurrentConversationId(newConversation.id);
+    setMessages([]);
   };
 
   const loadUserFiles = async (userId) => {
@@ -188,7 +255,7 @@ export default function Home() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Rag Chat
           </Typography>
-          <Button color="inherit" onClick={handleSignIn}>Login</Button>
+          <Button color="inherit" onClick={() => router.push('/signin')}>Login</Button>
         </Toolbar>
       </AppBar>
       <Container maxWidth="md" sx={{ mt: 8, mb: 4 }}>
@@ -237,6 +304,12 @@ export default function Home() {
       </Box>
       <Box sx={{ overflow: 'auto' }}>
         <List>
+          <ListItem button onClick={createNewConversation}>
+            <ListItemIcon>
+              <NoteAddIcon />
+            </ListItemIcon>
+            <ListItemText primary="New Conversation" />
+          </ListItem>
           <ListItem button onClick={() => document.getElementById('fileInput').click()}>
             <ListItemIcon>
               <UploadFileIcon />
@@ -246,10 +319,34 @@ export default function Home() {
         </List>
         <FileUpload onFileUpload={handleFileUpload} />
         <FileList files={files} onRemoveFile={handleRemoveFile} />
+        <List>
+          {conversations.map((conversation) => (
+            <ListItem 
+              button 
+              key={conversation.id} 
+              onClick={() => {
+                setCurrentConversationId(conversation.id);
+                loadConversationMessages(conversation.id);
+              }}
+              selected={conversation.id === currentConversationId}
+            >
+              <ListItemText primary={`Conversation ${conversation.id.slice(0, 8)}...`} />
+            </ListItem>
+          ))}
+        </List>
       </Box>
     </Drawer>
   );
 
+
+  const CreateAccountPage = () => (
+    <Container maxWidth="sm">
+      <Paper elevation={3} sx={{ p: 4, mt: 8 }}>
+        <Typography variant="h4" gutterBottom>Create Account</Typography>
+        {/* Add create account form here */}
+      </Paper>
+    </Container>
+  );
  
 
   return (
