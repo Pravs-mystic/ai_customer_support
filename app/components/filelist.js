@@ -1,32 +1,57 @@
 import React from 'react';
-import { List, ListItem, Button, IconButton, Box } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import { List, ListItem, ListItemText, ListItemIcon, Collapse } from '@mui/material';
+import FolderIcon from '@mui/icons-material/Folder';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
 
-const FileList = ({ files, onRemoveFile }) => {
+export default function FileList({ files }) {
+  const [openKBs, setOpenKBs] = React.useState({});
+
+  const toggleKB = (kbId) => {
+    setOpenKBs(prev => ({ ...prev, [kbId]: !prev[kbId] }));
+  };
+
+  // Group files by knowledge base
+  const groupedFiles = files.reduce((acc, file) => {
+    if (!acc[file.knowledgeBaseId]) {
+      acc[file.knowledgeBaseId] = {
+        name: file.knowledgeBaseName,
+        files: []
+      };
+    }
+    acc[file.knowledgeBaseId].files.push(file);
+    return acc;
+  }, {});
+
   return (
     <List>
-      {files.map((file, index) => (
-        <ListItem key={index}>
-          <Box sx={{ position: 'relative', width: '100%' }}>
-            <Button
-              variant="outlined"
-              fullWidth
-              sx={{ pr: 4, textAlign: 'left', textTransform: 'none' }}
-            >
-              {file.name}
-            </Button>
-            <IconButton
-              size="small"
-              sx={{ position: 'absolute', top: 4, right: 4 }}
-              onClick={() => onRemoveFile(index)}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        </ListItem>
+      {Object.entries(groupedFiles).map(([kbId, kb]) => (
+        <React.Fragment key={kbId}>
+          <ListItem button onClick={() => toggleKB(kbId)}>
+            <ListItemIcon>
+              <FolderIcon />
+            </ListItemIcon>
+            <ListItemText primary={kb.name} />
+            {openKBs[kbId] ? <ExpandLess /> : <ExpandMore />}
+          </ListItem>
+          <Collapse in={openKBs[kbId]} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding>
+              {kb.files.map((file) => (
+                <ListItem key={file.documentId} sx={{ pl: 4 }}>
+                  <ListItemIcon>
+                    <InsertDriveFileIcon />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={file.name} 
+                    secondary={`${file.fileType} - ${(file.fileSize / 1024).toFixed(2)} KB`} 
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Collapse>
+        </React.Fragment>
       ))}
     </List>
   );
-};
-
-export default FileList;
+}

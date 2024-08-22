@@ -26,6 +26,10 @@ const config = {
   const User = require('./User')(sequelize, DataTypes);
   const Conversation = require('./Conversation')(sequelize, DataTypes);
   const Message = require('./Message')(sequelize, DataTypes);
+  const KnowledgeBase = require('./KnowledgeBase')(sequelize, DataTypes);
+  const Document = require('./Document')(sequelize, DataTypes);
+  const DocumentChunk = require('./DocumentChunk')(sequelize, DataTypes);
+
   
   const db = {
     sequelize,
@@ -33,6 +37,9 @@ const config = {
     User,
     Conversation,
     Message,
+    KnowledgeBase,
+    Document,
+    DocumentChunk,
   };
   
   // Set up associations

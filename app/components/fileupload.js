@@ -1,10 +1,10 @@
 import React from 'react';
 import { Input } from '@mui/material';
 
-const FileUpload = ({ onFileUpload }) => {
+const FileUpload = ({ handleFileUpload }) => {
   const handleFileChange = (event) => {
     const files = Array.from(event.target.files);
-    onFileUpload(files);
+    handleFileUpload(files);
   };
 
   return (

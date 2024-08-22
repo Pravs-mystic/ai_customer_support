@@ -6,6 +6,7 @@ const sequelize = require('./server/db')
 const path = require('path');
 
 
+
 const modelsDir = path.join(__dirname, 'server', 'models');
 const models = {};
 
@@ -63,6 +64,13 @@ async function initDb() {
     console.log('Syncing database...');
     await sequelize.sync({ force: true });
     console.log('Database synchronized successfully.');
+
+    try {
+      await sequelize.query('CREATE EXTENSION IF NOT EXISTS vector;');
+      console.log('Vector extension created or already exists.');
+    } catch (error) {
+      console.error('Error creating vector extension:', error.message);
+    }
 
     // Check individual tables
     console.log('Checking individual tables:');

@@ -9,9 +9,9 @@ const Conversation = sequelize.define('Conversation', {
     primaryKey: true,
   },
   userId: {
-    type: DataTypes.STRING,
+    type: DataTypes.UUID,
     allowNull: false,
-  },
+  }
 });
 
 Conversation.associate = function(models) {

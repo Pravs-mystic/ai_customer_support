@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { compare } from 'bcrypt';
-import { sign } from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken'; 
 import db from '../../../../server/models';
 
 export async function POST(request) {
