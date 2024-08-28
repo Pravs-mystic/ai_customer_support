@@ -6,8 +6,6 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import StorageIcon from '@mui/icons-material/Storage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
-import FileUpload from './components/fileupload';
-import FileList from './components/filelist';
 import Image from 'next/image';
 import { ref, uploadBytes, listAll, getDownloadURL, deleteObject } from "firebase/storage";
 import { auth, storage, googleProvider } from './firebase';
@@ -15,15 +13,22 @@ import Chatinterface from "./components/chatinterface";
 import { createUser, getOrCreateConversation, saveMessage, getUserConversations, getConversationMessages } from '../utils/dbOperations';
 import SignInPage from './signin/page';
 import { useRouter } from 'next/navigation';
+import { useAuth } from './providers/AuthProvider';
+import ChatInterface from './components/chatinterface';
+import AuthenticatedLayout from "./layouts/AuthenticatedLayout";
+import ChatDrawer from "./components/chatdrawer";
+import Header from "./components/header";
+import KnowledgeBase from "./components/knowledgeBase";
 
 export default function Home() {
   console.log('Home component rendering');
+  
   const [messages, setMessages] = useState([
     { role: "assistant", content: "Hi, how can I help you today?" }
   ]);
   const [files, setFiles] = useState([]);
   const [menuPosition, setMenuPosition] = useState(null);
-  const [user, setUser] = useState(null);
+  // const [user, setUser] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [knowledgeBases, setKnowledgeBases] = useState([]);
@@ -31,67 +36,78 @@ export default function Home() {
   const [newKBName, setNewKBName] = useState('');
   const chatContainerRef = useRef(null);
   const router = useRouter();
+  const { user, loading } = useAuth();
+  const [isClient, setIsClient] = useState(false);
+  const [activeComponent, setActiveComponent] = useState('chat');
 
   useEffect(() => {
-    console.log("use effect messages ", messages)
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  const checkUserSession = async () => {
-    try {
-      const response = await fetch('/api/auth/session', {
-        method: 'GET',
-        credentials: 'include' // Important for including cookies in the request
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.isLoggedIn) {
-          setUser(data.user);
-          const userConversations = await getUserConversations(data.user.id);
-          setConversations(userConversations);
-          if (userConversations.length > 0) {
-            setCurrentConversationId(userConversations[0].id);
-            loadConversationMessages(userConversations[0].id);
-          }
-          loadUserFiles(data.user.id);
-        } else {
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error("Error checking user session:", error);
-      setUser(null);
-    }
-  };
-
-  useEffect(() => {
-    // Check for user session on component mount
-    checkUserSession();
+    setIsClient(true);
   }, []);
 
-  const handleSignOut = async () => {
-    try {
-      const response = await fetch('/api/auth/signout', {
-        method: 'POST',
-        credentials: 'include' // Important for including cookies in the request
-      });
-      if (response.ok) {
-        setUser(null);
-        setMenuPosition(null);
-        setFiles([]);
-        setConversations([]);
-        setCurrentConversationId(null);
-        setMessages([]);
-        router.push('/');
-      }
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
+  if (loading || !isClient) {
+    return <div>Loading...</div>;
+  }
+
+  const handleComponentChange = (component) => {
+    setActiveComponent(component);
   };
+  // useEffect(() => {
+  //   console.log("use effect messages ", messages)
+  //   if (chatContainerRef.current) {
+  //     chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+  //   }
+  // }, [messages]);
+
+  // const checkUserSession = async () => {
+  //   try {
+  //     const response = await fetch('/api/auth/session', {
+  //       method: 'GET',
+  //       credentials: 'include' // Important for including cookies in the request
+  //     });
+  //     if (response.ok) {
+  //       const data = await response.json();
+  //       if (data.isLoggedIn) {
+  //         setUser(data.user);
+  //         const userConversations = await getUserConversations(data.user.id);
+  //         setConversations(userConversations);
+  //         if (userConversations.length > 0) {
+  //           setCurrentConversationId(userConversations[0].id);
+  //           loadConversationMessages(userConversations[0].id);
+  //         }
+  //         loadUserFiles(data.user.id);
+  //       } else {
+  //         setUser(null);
+  //       }
+  //     } else {
+  //       setUser(null);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error checking user session:", error);
+  //     setUser(null);
+  //   }
+  // };
+
+
+
+  // const handleSignOut = async () => {
+  //   try {
+  //     const response = await fetch('/api/auth/signout', {
+  //       method: 'POST',
+  //       credentials: 'include' // Important for including cookies in the request
+  //     });
+  //     if (response.ok) {
+  //       setUser(null);
+  //       setMenuPosition(null);
+  //       setFiles([]);
+  //       setConversations([]);
+  //       setCurrentConversationId(null);
+  //       setMessages([]);
+  //       router.push('/');
+  //     }
+  //   } catch (error) {
+  //     console.error("Error signing out:", error);
+  //   }
+  // };
 
 
 
@@ -184,71 +200,35 @@ export default function Home() {
     }
   };
 
-  // const handleFileUpload = async (newFiles) => {
-  //   if (!user) return;
-  
-  //   const uploadPromises = newFiles.map(async (file) => {
-  //     const fileRef = ref(storage, `files/${user.uid}/${file.name}`);
-  //     try {
-  //       const snapshot = await uploadBytes(fileRef, file);
-  //       const url = await getDownloadURL(snapshot.ref);
-  //       console.log('File uploaded successfully');
-  //       return { name: file.name, url };
-  //     } catch (error) {
-  //       console.error("Error uploading file:", error);
-  //       throw error;
+
+
+
+  // const createIndexAndEmbeddings = useCallback(async () => {
+  //   if (!user) {
+  //     console.error("No user logged in");
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await fetch('/api/setup', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json'
+  //       },
+  //       body: JSON.stringify({ userId: user.uid })
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error('Failed to create index and embeddings');
   //     }
-  //   });
-  
-  //   try {
-  //     const uploadedFiles = await Promise.all(uploadPromises);
-  //     setFiles((prevFiles) => [...prevFiles, ...uploadedFiles]);
-  //     await createIndexAndEmbeddings(); // Automatically create index after upload
+
+  //     const result = await response.json();
+  //     console.log(result.data);
+
   //   } catch (error) {
-  //     console.error("Error uploading files:", error);
+  //     console.error("Error creating index and embeddings:", error);
   //   }
-  // };
-
-  // const handleRemoveFile = async (index) => {
-  //   if (!user) return;
-
-  //   const fileToRemove = files[index];
-  //   const fileRef = ref(storage, `files/${user.uid}/${fileToRemove.name}`);
-
-  //   try {
-  //     await deleteObject(fileRef);
-  //     setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
-  //   } catch (error) {
-  //     console.error("Error removing file:", error);
-  //   }
-  // };
-
-  const createIndexAndEmbeddings = useCallback(async () => {
-    if (!user) {
-      console.error("No user logged in");
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/setup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ userId: user.uid })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create index and embeddings');
-      }
-
-      const result = await response.json();
-      console.log(result.data);
-
-    } catch (error) {
-      console.error("Error creating index and embeddings:", error);
-    }
-  }, [user]);
+  // }, [user]);
 
   const sendMessage = async (message) => {
     console.log("message ", message);
@@ -330,100 +310,100 @@ export default function Home() {
     </>
   );
 
-  const ChatDrawer = () => {
+  // const ChatDrawer = () => {
   
-    const handleCreateKB = async () => {
-      if (!newKBName.trim()) return;
+  //   const handleCreateKB = async () => {
+  //     if (!newKBName.trim()) return;
   
-      try {
-        const response = await fetch('/api/knowledgebases', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ name: newKBName, userId: user.id }),
-        });
+  //     try {
+  //       const response = await fetch('/api/knowledgebases', {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //         body: JSON.stringify({ name: newKBName, userId: user.id }),
+  //       });
   
-        if (!response.ok) {
-          throw new Error('Failed to create knowledge base');
-        }
+  //       if (!response.ok) {
+  //         throw new Error('Failed to create knowledge base');
+  //       }
   
-        // Reset state and reload user files
-        setNewKBName('');
-        setIsCreatingKB(false);
-        loadUserFiles(user.id);
-      } catch (error) {
-        console.error('Error creating knowledge base:', error);
-        // Handle error (e.g., show error message to user)
-      }
-    };
+  //       // Reset state and reload user files
+  //       setNewKBName('');
+  //       setIsCreatingKB(false);
+  //       loadUserFiles(user.id);
+  //     } catch (error) {
+  //       console.error('Error creating knowledge base:', error);
+  //       // Handle error (e.g., show error message to user)
+  //     }
+  //   };
   
-    return (
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: 240,
-          flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: 240, boxSizing: 'border-box' },
-        }}
-      >
-        <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-          <Image src="/logo.jpg" alt="Rag Chat Logo" width={40} height={40} />
-          <Typography variant="h6" sx={{ ml: 2 }}>Rag Chat</Typography>
-        </Box>
-        <Box sx={{ overflow: 'auto' }}>
-          <List>
-            <ListItem button onClick={createNewConversation}>
-              <ListItemIcon>
-                <NoteAddIcon />
-              </ListItemIcon>
-              <ListItemText primary="New Conversation" />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <StorageIcon />
-              </ListItemIcon>
-              <ListItemText primary="Create Knowledge Base" />
-              <IconButton onClick={() => setIsCreatingKB(true)}>
-                <NoteAddIcon />
-              </IconButton>
-            </ListItem>
-          </List>
-          {isCreatingKB && (
-            <Box sx={{ p: 2 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Knowledge Base Name"
-                value={newKBName}
-                onChange={(e) => setNewKBName(e.target.value)}
-                sx={{ mb: 1 }}
-              />
-              <Button variant="contained" onClick={handleCreateKB} fullWidth>
-                Create
-              </Button>
-            </Box>
-          )}
-          <FileList files={files} />
-          <List>
-            {conversations.map((conversation) => (
-              <ListItem 
-                button 
-                key={conversation.id} 
-                onClick={() => {
-                  setCurrentConversationId(conversation.id);
-                  loadConversationMessages(conversation.id);
-                }}
-                selected={conversation.id === currentConversationId}
-              >
-                <ListItemText primary={`Conversation ${conversation.id.slice(0, 8)}...`} />
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-      </Drawer>
-    );
-  };
+  //   return (
+  //     <Drawer
+  //       variant="permanent"
+  //       sx={{
+  //         width: 240,
+  //         flexShrink: 0,
+  //         [`& .MuiDrawer-paper`]: { width: 240, boxSizing: 'border-box' },
+  //       }}
+  //     >
+  //       <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+  //         <Image src="/logo.jpg" alt="Rag Chat Logo" width={40} height={40} />
+  //         <Typography variant="h6" sx={{ ml: 2 }}>Rag Chat</Typography>
+  //       </Box>
+  //       <Box sx={{ overflow: 'auto' }}>
+  //         <List>
+  //           <ListItem button onClick={createNewConversation}>
+  //             <ListItemIcon>
+  //               <NoteAddIcon />
+  //             </ListItemIcon>
+  //             <ListItemText primary="New Conversation" />
+  //           </ListItem>
+  //           <ListItem>
+  //             <ListItemIcon>
+  //               <StorageIcon />
+  //             </ListItemIcon>
+  //             <ListItemText primary="Create Knowledge Base" />
+  //             <IconButton onClick={() => setIsCreatingKB(true)}>
+  //               <NoteAddIcon />
+  //             </IconButton>
+  //           </ListItem>
+  //         </List>
+  //         {isCreatingKB && (
+  //           <Box sx={{ p: 2 }}>
+  //             <TextField
+  //               fullWidth
+  //               size="small"
+  //               label="Knowledge Base Name"
+  //               value={newKBName}
+  //               onChange={(e) => setNewKBName(e.target.value)}
+  //               sx={{ mb: 1 }}
+  //             />
+  //             <Button variant="contained" onClick={handleCreateKB} fullWidth>
+  //               Create
+  //             </Button>
+  //           </Box>
+  //         )}
+  //         <FileList files={files} />
+  //         <List>
+  //           {conversations.map((conversation) => (
+  //             <ListItem 
+  //               button 
+  //               key={conversation.id} 
+  //               onClick={() => {
+  //                 setCurrentConversationId(conversation.id);
+  //                 loadConversationMessages(conversation.id);
+  //               }}
+  //               selected={conversation.id === currentConversationId}
+  //             >
+  //               <ListItemText primary={`Conversation ${conversation.id.slice(0, 8)}...`} />
+  //             </ListItem>
+  //           ))}
+  //         </List>
+  //       </Box>
+  //     </Drawer>
+  //   );
+  // };
 
 
   const CreateAccountPage = () => (
@@ -437,30 +417,8 @@ export default function Home() {
  
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
-      {user ? (
-        <>
-          <ChatDrawer />
-          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2 }}>
-              <IconButton onClick={(e) => setMenuPosition({ top: e.clientY, left: e.clientX })}>
-                <Avatar src={user.photoURL} alt={user.displayName} />
-              </IconButton>
-              <Menu
-                anchorReference="anchorPosition"
-                anchorPosition={menuPosition}
-                open={Boolean(menuPosition)}
-                onClose={() => setMenuPosition(null)}
-              >
-                <MenuItem onClick={handleSignOut}>Logout</MenuItem>
-              </Menu>
-            </Box>
-            <Chatinterface messages={messages} sendMessage={sendMessage} />
-          </Box>
-        </>
-      ) : (
+    <div className="flex h-screen">
         <WelcomePage />
-      )}
-    </Box>
+    </div>
   );
 }

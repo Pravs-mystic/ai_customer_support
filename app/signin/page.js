@@ -5,12 +5,14 @@ import { Box, Button, Container, Paper, Stack, Typography, TextField, Divider, A
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import GoogleIcon from '@mui/icons-material/Google';
+import { useAuth } from '../providers/AuthProvider';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -22,7 +24,9 @@ export default function SignInPage() {
         body: JSON.stringify({ email, password }),
       });
       if (response.ok) {
-        router.push('/');
+        const userData = await response.json();
+        await login(userData); // Update the auth state
+        router.push('/home');
       } else {
         const data = await response.json();
         setError(data.error || 'An error occurred during sign in');

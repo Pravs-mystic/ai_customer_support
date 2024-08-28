@@ -41,7 +41,7 @@ export async function GET(request) {
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_API_URL}/`);
+    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_API_URL}/home`);
     response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
