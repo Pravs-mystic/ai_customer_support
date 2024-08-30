@@ -1,90 +1,142 @@
-'use client'
+"use client";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../providers/AuthProvider";
+import {
+  TextField,
+  Button,
+  Box,
+  Typography,
+  Divider,
+  Paper,
+  IconButton,
+} from "@mui/material";
+import UploadIcon from "@mui/icons-material/Upload";
+import Tooltip from "@mui/material/Tooltip";
+import FileUpload from "./fileUpload";
 
 export default function KnowledgeBase() {
-
   const [knowledgeBases, setKnowledgeBases] = useState([]);
   const [currentKnowledgeBaseId, setCurrentKnowledgeBaseId] = useState(null);
-  const { user, loading } = useAuth()
-
-  
-  const handleFileUpload = async (newFiles, knowledgeBaseId) => {
-    if (!user) return;
-  
-    const uploadPromises = newFiles.map(async (file) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('userId', user.id);
-      formData.append('knowledgeBaseId', knowledgeBaseId);
-      
-      try {
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        if (!response.ok) throw new Error('File upload failed');
-        const data = await response.json();
-        return data.document;
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        throw error;
-      }
-    });
-  
-    try {
-      const uploadedDocuments = await Promise.all(uploadPromises);
-      // Update your state or perform any necessary actions with the uploaded documents
-      console.log('Uploaded documents:', uploadedDocuments);
-    } catch (error) {
-      console.error("Error uploading files:", error);
-    }
-  };
+  const [newKnowledgeBaseName, setNewKnowledgeBaseName] = useState("");
+  const { user, loading } = useAuth();
 
   const fetchKnowledgeBases = async () => {
     try {
       const response = await fetch(`/api/knowledgebases?userId=${user.id}`);
       if (response.ok) {
         const data = await response.json();
+		console.log("data",data)
         setKnowledgeBases(data.knowledgeBases);
+		console.log("knowledgeBases xxx",knowledgeBases)
         if (data.knowledgeBases.length > 0) {
           setCurrentKnowledgeBaseId(data.knowledgeBases[0].id);
         }
       }
     } catch (error) {
-      console.error('Error fetching knowledge bases:', error);
+      console.error("Error fetching knowledge bases:", error);
     }
   };
-  
-  const createKnowledgeBase = async (name, description) => {
+
+  const createKnowledgeBase = async () => {
+    if (!newKnowledgeBaseName.trim()) return;
     try {
-      const response = await fetch('/api/knowledgebases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, userId: user.id }),
+      const response = await fetch("/api/knowledgebases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newKnowledgeBaseName, userId: user.id }),
       });
       if (response.ok) {
         const newKnowledgeBase = await response.json();
         setKnowledgeBases([...knowledgeBases, newKnowledgeBase]);
         setCurrentKnowledgeBaseId(newKnowledgeBase.id);
+        setNewKnowledgeBaseName("");
       }
     } catch (error) {
-      console.error('Error creating knowledge base:', error);
+      console.error("Error creating knowledge base:", error);
     }
   };
 
+  const handleUploadComplete = (knowledgeBaseId, uploadedDocuments) => {
+    setKnowledgeBases((prevKnowledgeBases) =>
+      prevKnowledgeBases.map((kb) =>
+        kb.id === knowledgeBaseId
+          ? { ...kb, Documents: [...(kb.Documents || []), ...uploadedDocuments] }
+          : kb
+      )
+    );
+  };
+
   useEffect(() => {
+    if (!loading && !user) {
+      router.push('/');
+    }
     if (user) {
       fetchKnowledgeBases();
     }
-  },[]);
-  
-    return (
-      <div className="p-4">
-        <h2 className="text-2xl font-bold mb-4">Knowledge Base</h2>
-        {/* Add your knowledge base content here */}
-        <p>This is where you&apos;ll implement the knowledge base functionality.</p>
-      </div>
-    );
-  }
+  }, [user]);
+
+  return (
+    <Box width="80%" mx="auto">
+      <Typography variant="h5" component="h2" gutterBottom>
+        Knowledge Base
+      </Typography>
+      <Box display="flex" alignItems="center" mb={4}>
+        <TextField
+          label="Knowledge Base Name"
+          value={newKnowledgeBaseName}
+          onChange={(e) => setNewKnowledgeBaseName(e.target.value)}
+          variant="outlined"
+          fullWidth
+          sx={{ mr: 2 }}
+        />
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={createKnowledgeBase}
+        >
+          Create
+        </Button>
+      </Box>
+
+      {knowledgeBases.map((kb) => (
+        <Box key={kb.id} sx={{ p: 2 }}>
+          <Box display="flex" alignItems="center">
+            <Typography variant="h6" component="h3" gutterBottom>
+              {kb.name}
+            </Typography>
+            <Tooltip title="Upload documents" arrow>
+              <IconButton onClick={() => document.getElementById('fileInput').click()}>
+                <UploadIcon />
+              </IconButton>
+            </Tooltip>
+            <FileUpload 
+			knowledgeBaseId={kb.id} 
+			onUploadComplete={(uploadedDocuments) => handleUploadComplete(kb.id, uploadedDocuments)}
+ 			/>
+          </Box>
+          {kb.Documents && kb.Documents.length > 0 ? (
+            kb.Documents.map((file, index) => (
+              <Box key={index} display="flex" justifyContent="space-between" alignItems="center" p={1} border={1} borderColor="grey.300" borderRadius={2} mb={1}>
+                <Typography variant="body2">
+                  {file.fileName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {file.fileSize} bytes
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {file.fileType}
+                </Typography>
+              </Box>
+            ))
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No files uploaded.
+            </Typography>
+          )}
+          <Divider sx={{ my: 2 }} />
+        </Box>
+      ))}
+    </Box>
+  );
+}

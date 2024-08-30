@@ -13,7 +13,7 @@ const theme = createTheme({
     },
     background: {
       default: '#F5F5F5', // Light Background
-      paper: '#EAEAEA', // Darker Background for paper elements
+      paper: '#F5F5F5', // Darker Background for paper elements -EAEAEA
       dark: '#431c76' //  Purple
     },
   },

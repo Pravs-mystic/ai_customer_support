@@ -43,8 +43,8 @@ export default function AuthenticatedLayout() {
           <ChatDrawer onComponentChange={handleComponentChange} />
           <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
             <Header />
-            {activeComponent === 'chat' && <ChatInterface />}
-            {activeComponent === 'knowledgeBase' && <KnowledgeBase />}
+            {activeComponent === 'chat' && <ChatInterface className="app-container"/>}
+            {activeComponent === 'knowledgeBase' && <KnowledgeBase className="app-container"/>}
           </Box>
     </Box>
   );

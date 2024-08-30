@@ -21,7 +21,9 @@ module.exports = (sequelize, DataTypes) => {
   
     KnowledgeBase.associate = (models) => {
       KnowledgeBase.belongsTo(models.User);
-      KnowledgeBase.hasMany(models.Document);
+      KnowledgeBase.hasMany(models.Document,{
+        foreignKey: 'knowledgeBaseId',
+      });
     };
   
     return KnowledgeBase;

@@ -21,7 +21,7 @@ export async function GET(request) {
         [db.Document, 'createdAt', 'DESC']
       ]
     });
-
+    console.log("knw:", knowledgeBases )
     return NextResponse.json({ knowledgeBases });
   } catch (error) {
     console.error('Error fetching knowledge bases:', error);
