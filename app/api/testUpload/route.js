@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import db from "../../../server/models";
-// import { encode, decode } from 'gpt-3-encoder';
 import { createEmbedding } from "../../../utils/openaiUtils";
-import { splitIntoChunks } from "../../../utils/textProcessing";
+import {RecursiveCharacterTextSplitter} from 'langchain/text_splitter'
 
 
 export async function POST(req) {
@@ -32,7 +31,8 @@ export async function POST(req) {
 			const arrayBuffer = await file.arrayBuffer();
 			  const pdfLoader = new PDFLoader(new Blob([arrayBuffer]));
 			  const pdfDocs = await pdfLoader.load();
-			  doc.push(...pdfDocs);
+			  console.log("pdfDocs:",pdfDocs)
+			  doc.push(pdfDocs[0].pageContent);
 		} else {
 			return NextResponse.json(
 				{ error: `Unsupported file type: ${file.name}` },
@@ -49,9 +49,23 @@ export async function POST(req) {
 			knowledgeBaseId: knowledgeBaseId,
 		});
 
-
-		const chunkTexts = splitIntoChunks(doc);
-        console.log("chunkTexts",chunkTexts)
+		const splitIntoChunks = async (doc) => {
+			const textSplitter = new RecursiveCharacterTextSplitter({
+			  chunkSize: 1000,
+			  chunkOverlap: 100,
+			});
+			console.log(`Splitting text into chunks`);
+	  
+			const chunks = await textSplitter.createDocuments([doc[0]]);
+			console.log('Generating embeddings');
+			console.log("Chunks:", chunks);
+			const chunkTexts = chunks.map(chunk => chunk.pageContent.replace(/\n/g, " "));
+			console.log("ChunkTexts:", chunkTexts);
+			return chunkTexts;
+		  };
+	  
+		  const chunkTexts = await splitIntoChunks(doc);
+		  console.log("chunkTexts", chunkTexts);
         
 
 		for (let i = 0; i < chunkTexts.length; i++) {

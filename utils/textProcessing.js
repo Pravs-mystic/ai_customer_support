@@ -24,10 +24,11 @@ export async function splitIntoChunks(doc) {
     })
     console.log(`Splitting text into chunks`)
 
-    const chunks = await textSplitter.createDocuments([doc[0].pageContent])
+    const chunks = await textSplitter.createDocuments([doc[0]])
     console.log('Generating embeddings');
-
+    console.log("Chunks:", chunks)
     const chunkTexts = chunks.map(chunk => chunk.pageContent.replace(/\n/g, " "));
+    console.log("ChunkTexts:", chunkTexts)
     return chunkTexts
     
   }
