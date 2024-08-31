@@ -12,8 +12,8 @@ export async function createUser(id, email, displayName, photoURL) {
   return dbOperation('createUser', { id, email, displayName, photoURL });
 }
 
-export async function getOrCreateConversation(userId) {
-  return dbOperation('getOrCreateConversation', { userId });
+export async function createConversation(userId) {
+  return dbOperation('createConversation', { userId });
 }
 
 export async function saveMessage(conversationId, role, content) {

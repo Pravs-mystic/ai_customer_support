@@ -1,6 +1,6 @@
 
 import { createEmbedding } from './openaiUtils';
-import db from '@/server/models';
+import db from '/server/models';
 
 
 

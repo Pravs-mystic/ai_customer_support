@@ -10,7 +10,7 @@ import Image from 'next/image';
 import { ref, uploadBytes, listAll, getDownloadURL, deleteObject } from "firebase/storage";
 import { auth, storage, googleProvider } from './firebase';
 import Chatinterface from "./components/chatinterface";
-import { createUser, getOrCreateConversation, saveMessage, getUserConversations, getConversationMessages } from '../utils/dbOperations';
+import { createUser, createConversation, saveMessage, getUserConversations, getConversationMessages } from '../utils/dbOperations';
 import SignInPage from './signin/page';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './providers/AuthProvider';

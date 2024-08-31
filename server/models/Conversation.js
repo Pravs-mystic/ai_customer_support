@@ -11,7 +11,7 @@ const Conversation = sequelize.define('Conversation', {
   userId: {
     type: DataTypes.UUID,
     allowNull: false,
-  }
+  }, 
 });
 
 Conversation.associate = function(models) {

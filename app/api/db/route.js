@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import db from '../../../server/models';
 
-console.log("db-user", db.User)
 export async function POST(req) {
   const { action, ...data } = await req.json();
+  console.log(`action : ${action} , data: ${data}`)
 
   try {
     switch (action) {
@@ -15,10 +15,11 @@ export async function POST(req) {
         });
         return NextResponse.json(user);
 
-      case 'getOrCreateConversation':
-        const [conversation] = await db.Conversation.findOrCreate({
-          where: { userId: data.userId },
+      case 'createConversation':
+        const conversation = await db.Conversation.create({
+          userId: data.userId,
         });
+        console.log("conversation:",conversation)
         return NextResponse.json(conversation);
 
       case 'saveMessage':
@@ -48,6 +49,6 @@ export async function POST(req) {
     }
   } catch (error) {
     console.error('Database operation failed:', error);
-    return NextResponse.json({ error: 'Database operation failed' }, { status: 500 });
+    throw NextResponse.json({ error: 'Database operation failed' }, { status: 500 });
   }
 }

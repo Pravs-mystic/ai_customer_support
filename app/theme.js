@@ -8,7 +8,7 @@ const theme = createTheme({
       contrastText: '#FFFFFF', // White text on primary
     },
     secondary: {
-      main: '#fbeeff', // Lighest Purple
+      main: '#87ceeb', // Lighest Purple
       contrastText: '#000000', // Black text on secondary
     },
     background: {
