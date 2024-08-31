@@ -47,10 +47,8 @@ export default function KnowledgeBase() {
         body: JSON.stringify({ name: newKnowledgeBaseName, userId: user.id }),
       });
       if (response.ok) {
-        const newKnowledgeBase = await response.json();
-        setKnowledgeBases([...knowledgeBases, newKnowledgeBase]);
-        setCurrentKnowledgeBaseId(newKnowledgeBase.id);
         setNewKnowledgeBaseName("");
+        fetchKnowledgeBases();
       }
     } catch (error) {
       console.error("Error creating knowledge base:", error);
@@ -65,6 +63,13 @@ export default function KnowledgeBase() {
           : kb
       )
     );
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      createKnowledgeBase();
+    }
   };
 
   useEffect(() => {
@@ -86,6 +91,7 @@ export default function KnowledgeBase() {
           label="Knowledge Base Name"
           value={newKnowledgeBaseName}
           onChange={(e) => setNewKnowledgeBaseName(e.target.value)}
+          onKeyDown={handleKeyDown}
           variant="outlined"
           fullWidth
           sx={{ mr: 2 }}
