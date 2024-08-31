@@ -61,7 +61,9 @@ const ChatInterface = ({ conversationId, initialMessages }) => {
             role: "user",
             content: message
           }
-        ]
+        ],
+        userId:user.id,
+        conversationId:convId
       })
     }).then(async (res) => {
       const reader = res.body.getReader();

@@ -18,10 +18,8 @@ module.exports = (sequelize, DataTypes) => {
     });
   
     Document.associate = (models) => {
-      Document.belongsTo(models.KnowledgeBase,{
-        foreignKey: 'knowledgeBaseId', 
-      });
-      Document.hasMany(models.DocumentChunk);
+      Document.belongsTo(models.KnowledgeBase, { foreignKey: 'knowledgeBaseId' });
+      Document.hasMany(models.DocumentChunk, { foreignKey: 'documentId' });
     };
   
     return Document;

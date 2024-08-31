@@ -4,7 +4,7 @@ import { generateResponse } from '/utils/openaiUtils';
 
 export async function POST(req) {
   const body = await req.json();
-    const { messages} = body;
+    const { messages, userId, conversationId} = body;
  
     const lastMessage = messages[messages.length - 1];
 
@@ -13,7 +13,7 @@ export async function POST(req) {
     }
     const query = lastMessage.content;
   try {
-    const similarChunks = await findSimilarChunks(query);
+    const similarChunks = await findSimilarChunks(query, userId);
     const context = similarChunks.map(chunk => chunk.content).join('\n\n');
     console.log("context",context)
     const messageContext = context + JSON.stringify(messages)

@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
     });
   
     DocumentChunk.associate = (models) => {
-      DocumentChunk.belongsTo(models.Document);
+      DocumentChunk.belongsTo(models.Document, { foreignKey: 'documentId' });
     };
   
     return DocumentChunk;
