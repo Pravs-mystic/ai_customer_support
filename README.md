@@ -1,10 +1,11 @@
-# Rag Chat
-Rag Chat uses Generative AI to provide instant, accurate responses to your queries from any uploaded documents. Experience the power of AI-driven support with these features:
+# AI Chat App for Document querying
+This chat app uses Generative AI to provide instant, accurate responses to your queries from any uploaded documents. Experience the power of AI-driven support with these features:
 
 ## Features:
-1. Login and Upload your documents (pdf, txt, md) and query the bot anything about those docs
+1. Login and Upload your documents (pdf, txt, docx, md) and query the bot anything about those docs
 2. You can add multiple files and remove them anytime
-3. Coming soon: Multiple file formats, enhanced context, tools
+3. You can upload multiple files and store them in different knowledge abse folders. At anytime you can query all the documents present in a knowledge base by mentioning the name of the knowledge base in your prompt. (Eg: @kb:kb name your_prompt)
+5. Use custom made tools like cover letter generator and meeting action items generator by giving the name of the tool (Eg: @tool:tool_name your_prompt)
 
 ## How to run
 1. npm install
